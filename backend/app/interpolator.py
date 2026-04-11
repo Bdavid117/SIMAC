@@ -5,6 +5,8 @@ from datetime import datetime, timedelta
 import math
 from typing import Any
 
+from app.models import QualityMetrics, VariableQualityMetric
+
 
 FIVE_MINUTES = 5.0
 HALF_WINDOW = 2.5
@@ -14,6 +16,12 @@ HALF_WINDOW = 2.5
 class TimedRecord:
     timestamp: datetime
     values: dict[str, Any]
+
+
+@dataclass(frozen=True)
+class ResolveResult:
+    value: Any
+    strategy: str
 
 
 def _is_missing(value: Any) -> bool:
@@ -130,7 +138,7 @@ def _format_value(value: float) -> float:
     return round(value, 2)
 
 
-def _resolve_value(t: datetime, key: str, records: list[TimedRecord]) -> Any:
+def _resolve_value(t: datetime, key: str, records: list[TimedRecord]) -> ResolveResult:
     prev_item = _nearest_previous(t, key, records)
     next_item = _nearest_next(t, key, records)
 
@@ -138,7 +146,7 @@ def _resolve_value(t: datetime, key: str, records: list[TimedRecord]) -> Any:
     d2 = _distance_minutes(t, next_item)
 
     if prev_item is not None and next_item is not None and prev_item.timestamp == t and next_item.timestamp == t:
-        return prev_item.values[key]
+        return ResolveResult(value=prev_item.values[key], strategy="original")
 
     # TODO: validar regla PDF (umbral estricto de 2.5 min para interpolacion en ambos lados)
     if d1 < HALF_WINDOW and d2 < HALF_WINDOW:
@@ -151,25 +159,24 @@ def _resolve_value(t: datetime, key: str, records: list[TimedRecord]) -> Any:
         if n1 is not None and n2 is not None:
             denominator = d1 + d2
             if denominator == 0:
-                return _format_value(n1)
+                return ResolveResult(value=_format_value(n1), strategy="interpolated")
             interpolated = n1 + (n2 - n1) * (d1 / denominator)
-            return _format_value(interpolated)
+            return ResolveResult(value=_format_value(interpolated), strategy="interpolated")
 
         if d1 <= d2:
-            return v1 if v1 is not None else "ND"
-        return v2 if v2 is not None else "ND"
+            return ResolveResult(value=(v1 if v1 is not None else "ND"), strategy="carried")
+        return ResolveResult(value=(v2 if v2 is not None else "ND"), strategy="carried")
 
     if d1 < HALF_WINDOW and d2 > FIVE_MINUTES:
-        return prev_item.values[key] if prev_item else "ND"
+        return ResolveResult(value=(prev_item.values[key] if prev_item else "ND"), strategy="carried")
 
     if d1 > FIVE_MINUTES and d2 < HALF_WINDOW:
-        return next_item.values[key] if next_item else "ND"
+        return ResolveResult(value=(next_item.values[key] if next_item else "ND"), strategy="carried")
 
-    # TODO: manejar ND
-    return "ND"
+    return ResolveResult(value="ND", strategy="missing")
 
 
-def homogenize(data: list[dict[str, Any]]) -> list[dict[str, Any]]:
+def homogenize(data: list[dict[str, Any]]) -> tuple[list[dict[str, Any]], QualityMetrics]:
     if not data:
         raise ValueError("La entrada no puede estar vacia")
 
@@ -184,6 +191,22 @@ def homogenize(data: list[dict[str, Any]]) -> list[dict[str, Any]]:
     end = _floor_to_five_minutes(records[-1].timestamp)
 
     output: list[dict[str, Any]] = []
+    strategy_counts: dict[str, dict[str, int]] = {
+        key: {
+            "total": 0,
+            "original": 0,
+            "interpolated": 0,
+            "carried": 0,
+            "missing": 0,
+        }
+        for key in measurement_keys
+    }
+
+    total_original = 0
+    total_interpolated = 0
+    total_carried = 0
+    total_missing = 0
+
     current = start
     step = timedelta(minutes=5)
 
@@ -194,9 +217,55 @@ def homogenize(data: list[dict[str, Any]]) -> list[dict[str, Any]]:
         }
 
         for key in measurement_keys:
-            row[key] = _resolve_value(current, key, records)
+            resolved = _resolve_value(current, key, records)
+            row[key] = resolved.value
+
+            strategy_counts[key]["total"] += 1
+            if resolved.strategy == "original":
+                strategy_counts[key]["original"] += 1
+                total_original += 1
+            elif resolved.strategy == "interpolated":
+                strategy_counts[key]["interpolated"] += 1
+                total_interpolated += 1
+            elif resolved.strategy == "carried":
+                strategy_counts[key]["carried"] += 1
+                total_carried += 1
+            else:
+                strategy_counts[key]["missing"] += 1
+                total_missing += 1
 
         output.append(row)
         current += step
 
-    return output
+    per_variable: dict[str, VariableQualityMetric] = {}
+    for key, counters in strategy_counts.items():
+        total_points = counters["total"]
+        resolved_points = counters["original"] + counters["interpolated"] + counters["carried"]
+        coverage_pct = round((resolved_points / total_points) * 100, 2) if total_points else 0.0
+        per_variable[key] = VariableQualityMetric(
+            total_points=total_points,
+            original_count=counters["original"],
+            interpolated_count=counters["interpolated"],
+            carried_count=counters["carried"],
+            missing_count=counters["missing"],
+            coverage_pct=coverage_pct,
+        )
+
+    total_cells = len(output) * len(measurement_keys)
+    resolved_cells = total_original + total_interpolated + total_carried
+    coverage_pct = round((resolved_cells / total_cells) * 100, 2) if total_cells else 0.0
+
+    metrics = QualityMetrics(
+        total_records=len(output),
+        total_variables=len(measurement_keys),
+        total_cells=total_cells,
+        resolved_cells=resolved_cells,
+        missing_cells=total_missing,
+        coverage_pct=coverage_pct,
+        original_cells=total_original,
+        interpolated_cells=total_interpolated,
+        carried_cells=total_carried,
+        per_variable=per_variable,
+    )
+
+    return output, metrics

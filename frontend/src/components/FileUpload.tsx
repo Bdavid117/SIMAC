@@ -1,11 +1,11 @@
 import { useRef, useState } from "react";
 
-import { uploadData } from "../services/api";
-import type { ProcessedStationData, RawStationData } from "../types";
+import { ApiClientError, uploadData } from "../services/api";
+import type { ProcessedStationData, QualityMetrics, RawStationData } from "../types";
 
 interface FileUploadProps {
   onRawLoaded: (data: RawStationData[]) => void;
-  onProcessedLoaded: (data: ProcessedStationData[]) => void;
+  onProcessedLoaded: (data: ProcessedStationData[], metrics: QualityMetrics) => void;
   onSaved: (id: number) => void;
   onRefreshHistory: () => Promise<void>;
 }
@@ -59,14 +59,18 @@ export default function FileUpload({
 
       const response = await uploadData(rawData);
       onRawLoaded(rawData);
-      onProcessedLoaded(response.processed_data);
+      onProcessedLoaded(response.processed_data, response.quality_metrics);
       onSaved(response.id);
       await onRefreshHistory();
 
       setSuccess(`Archivo procesado correctamente. Calculo #${response.id}`);
     } catch (caughtError) {
-      const message =
-        caughtError instanceof Error ? caughtError.message : "No fue posible procesar el archivo";
+      let message = caughtError instanceof Error ? caughtError.message : "No fue posible procesar el archivo";
+
+      if (caughtError instanceof ApiClientError && caughtError.traceId) {
+        message = `${message} (Traza: ${caughtError.traceId})`;
+      }
+
       setError(message);
     } finally {
       setLoading(false);

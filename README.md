@@ -47,11 +47,13 @@ simac-homogenizador/
 
 - `POST /homogenize`
   - Entrada: array JSON de datos crudos
-  - Salida: `{ id, processed_data }`
+  - Salida: `{ id, processed_data, quality_metrics }`
 - `GET /history`
-  - Retorna ultimos 10 calculos persistidos
+  - Retorna historial paginado (`page`, `page_size`)
 - `GET /health`
   - Estado del backend
+- `GET /ready`
+  - Readiness del backend con verificacion de conectividad a DB
 
 ## Estructura JSON esperada
 
@@ -73,7 +75,7 @@ Cada registro debe incluir fecha y hora con formato `dd/mm/yyyy HH:MM:SS` (en ca
 }
 ```
 
-Se incluye archivo de prueba en [test_data.json](test_data.json).
+Se incluyen archivos de prueba en [test_data.json](test_data.json) y [test_data_2.json](test_data_2.json).
 
 ## Ejecucion local (sin Docker)
 
@@ -161,20 +163,51 @@ curl -X POST http://localhost:8000/homogenize \
 
 ```bash
 curl http://localhost:8000/history
+curl "http://localhost:8000/history?page=1&page_size=10"
 ```
 
 ### Via Nginx (proxy /api)
 
 ```bash
 curl http://localhost/api/health
+curl http://localhost/api/ready
 curl http://localhost/api/history
+curl "http://localhost/api/history?page=2&page_size=10"
 ```
+
+## Trazabilidad de calidad
+
+La respuesta de `POST /homogenize` ahora incluye `quality_metrics` con:
+
+- Cobertura global (`coverage_pct`)
+- Celdas originales, interpoladas, arrastradas y faltantes
+- Duracion de procesamiento (`processing_duration_ms`)
+- Detalle por variable (`per_variable`)
+
+En frontend se muestra un panel de trazabilidad y se habilitan dos exportaciones CSV:
+
+- Datos procesados
+- Resumen de calidad por variable
+
+Tambien se habilita una exportacion PDF con resumen ejecutivo de calidad y muestra de datos procesados.
+
+## Errores y trazabilidad operativa
+
+Las respuestas de error incluyen:
+
+- `code`
+- `message`
+- `traceId`
+- `timestamp`
+- `requestPath`
+
+Adicionalmente, el backend propaga `X-Request-ID` en las respuestas para correlacion de logs y soporte.
 
 ## Notas de cumplimiento
 
 - Se implementa backend FastAPI con persistencia en PostgreSQL.
 - Se implementa frontend con carga de JSON, tabla comparativa y grafica de temperatura.
+- Se agrega panel de trazabilidad de calidad y exportacion CSV en frontend.
 - La infraestructura contiene exactamente 3 servicios en compose (`frontend`, `backend`, `db`).
 - Nginx sirve frontend y proxy de `/api` a backend.
 - Se incluye `test_data.json` con datos equivalentes a la Tabla 1 del enunciado.
-
