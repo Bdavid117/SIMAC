@@ -170,10 +170,6 @@ curl http://localhost/api/health
 curl http://localhost/api/history
 ```
 
-## Estrategia de commits semanticos
-
-Se incluye guion listo para ejecutar en orden en [scripts/semantic_commits.ps1](scripts/semantic_commits.ps1) con 9 commits semanticos.
-
 ## Notas de cumplimiento
 
 - Se implementa backend FastAPI con persistencia en PostgreSQL.
