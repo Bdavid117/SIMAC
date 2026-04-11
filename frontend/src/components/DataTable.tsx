@@ -132,27 +132,28 @@ export default function DataTable({ originalData, processedData }: DataTableProp
 
   if (!processedData.length) {
     return (
-      <section className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
-        <h2 className="text-lg font-semibold text-slate-800">Tabla comparativa</h2>
+      <section className="rounded-2xl bg-white p-5 shadow-sm ring-1 ring-slate-200/70">
+        <h2 className="font-serif text-xl font-semibold text-slate-800">Tabla comparativa</h2>
         <p className="mt-2 text-sm text-slate-500">No hay resultados para mostrar.</p>
       </section>
     );
   }
 
   return (
-    <section className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
+    <section className="rounded-2xl bg-white p-5 shadow-sm ring-1 ring-slate-200/70">
       <div className="mb-3 flex items-center justify-between">
-        <h2 className="text-lg font-semibold text-slate-800">Dato Original vs Dato Cincominutal</h2>
-        <span className="text-xs text-slate-500">Filas coloreadas segun cambios detectados</span>
+        <h2 className="font-serif text-xl font-semibold text-slate-800">Dato Original vs Dato Cincominutal</h2>
+        <span className="text-xs text-slate-500">Incluye estado por fila para revision rapida</span>
       </div>
 
-      <div className="overflow-x-auto">
+      <div className="max-h-[34rem] overflow-auto rounded-xl ring-1 ring-slate-200">
         <table className="min-w-full border-collapse text-sm">
           <thead>
-            <tr className="bg-slate-100 text-left text-slate-700">
+            <tr className="sticky top-0 z-10 bg-slate-100 text-left text-slate-700">
               <th className="px-3 py-2">Fecha</th>
               <th className="px-3 py-2">Hora 5m</th>
               <th className="px-3 py-2">Hora original cercana</th>
+              <th className="px-3 py-2">Estado</th>
               {measurementKeys.map((key) => (
                 <th key={`${key}-original`} className="px-3 py-2">
                   {key} original
@@ -169,11 +170,20 @@ export default function DataTable({ originalData, processedData }: DataTableProp
             {mergedRows.map(({ processed, original, changed }, index) => (
               <tr
                 key={`${processed.Fecha}-${processed.Hora}-${index}`}
-                className={changed ? "bg-amber-50" : "bg-emerald-50"}
+                className={changed ? "bg-amber-50/70" : "bg-emerald-50/70"}
               >
                 <td className="border-t border-slate-200 px-3 py-2">{processed.Fecha}</td>
                 <td className="border-t border-slate-200 px-3 py-2">{processed.Hora}</td>
                 <td className="border-t border-slate-200 px-3 py-2">{original ? hourValue(original) : "ND"}</td>
+                <td className="border-t border-slate-200 px-3 py-2">
+                  <span
+                    className={`inline-flex rounded-full px-2 py-0.5 text-xs font-semibold ${
+                      changed ? "bg-amber-100 text-amber-800" : "bg-emerald-100 text-emerald-800"
+                    }`}
+                  >
+                    {changed ? "Ajustado" : "Sin cambio"}
+                  </span>
+                </td>
                 {measurementKeys.map((key) => (
                   <td key={`${index}-${key}-o`} className="border-t border-slate-200 px-3 py-2">
                     {formatValue(original?.[key])}

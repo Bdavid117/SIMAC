@@ -6,7 +6,7 @@ Repositorio publico: [SIMAC](https://github.com/Bdavid117/SIMAC)
 
 ## Stack tecnologico
 
-- Backend: Python 3.11, FastAPI, Uvicorn, SQLAlchemy 2.0 async, asyncpg, Pydantic
+- Backend: Python 3.13 (Docker) / 3.11+ (local), FastAPI, Uvicorn, SQLAlchemy 2.0 async, asyncpg, Pydantic
 - Frontend: React 18, Vite, TypeScript, Axios, Chart.js, react-chartjs-2, TailwindCSS (CDN)
 - Base de datos: PostgreSQL 15
 - Infraestructura: Docker Compose + Nginx
@@ -42,16 +42,6 @@ simac-homogenizador/
 ├── test_data.json
 └── README.md
 ```
-
-## Reglas de homogenizacion (cumplimiento PDF)
-
-Para cada marca cincominutal objetivo `t`, se busca dato anterior `t1` y siguiente `t2` (ignorando `ND`/nulos en cada variable):
-
-- `Δt1 < 2.5` y `Δt2 < 2.5` -> interpolacion lineal
-  - `f(t) = v1 + (v2 - v1) * (Δt1 / (Δt1 + Δt2))`
-- `Δt1 < 2.5` y `Δt2 > 5` -> tomar `v1`
-- `Δt1 > 5` y `Δt2 < 2.5` -> tomar `v2`
-- cualquier otro caso -> `ND`
 
 ## API REST
 
@@ -191,9 +181,4 @@ Se incluye guion listo para ejecutar en orden en [scripts/semantic_commits.ps1](
 - La infraestructura contiene exactamente 3 servicios en compose (`frontend`, `backend`, `db`).
 - Nginx sirve frontend y proxy de `/api` a backend.
 - Se incluye `test_data.json` con datos equivalentes a la Tabla 1 del enunciado.
-
-## Contactos de entrega (segun PDF)
-
-- [ndduqueme@unal.edu.co](mailto:ndduqueme@unal.edu.co)
-- [avargase@unal.edu.co](mailto:avargase@unal.edu.co)
 

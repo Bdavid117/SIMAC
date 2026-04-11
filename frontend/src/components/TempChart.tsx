@@ -59,8 +59,8 @@ export default function TempChart({ processedData }: TempChartProps) {
 
   if (!processedData.length || !temperatureKey) {
     return (
-      <section className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
-        <h2 className="text-lg font-semibold text-slate-800">Curva de temperatura interpolada</h2>
+      <section className="rounded-2xl bg-white p-5 shadow-sm ring-1 ring-slate-200/70">
+        <h2 className="font-serif text-xl font-semibold text-slate-800">Curva de temperatura interpolada</h2>
         <p className="mt-2 text-sm text-slate-500">
           Carga datos validos que contengan una variable de temperatura para visualizar la grafica.
         </p>
@@ -77,10 +77,11 @@ export default function TempChart({ processedData }: TempChartProps) {
       {
         label: `${temperatureKey} cincominutal`,
         data: chartValues,
-        borderColor: "rgb(2, 132, 199)",
-        backgroundColor: "rgba(2, 132, 199, 0.18)",
+        borderColor: "rgb(37, 99, 235)",
+        backgroundColor: "rgba(37, 99, 235, 0.20)",
         pointRadius: 3,
-        tension: 0.2,
+        pointHoverRadius: 5,
+        tension: 0.28,
         spanGaps: false,
         fill: true,
       },
@@ -116,8 +117,8 @@ export default function TempChart({ processedData }: TempChartProps) {
   };
 
   return (
-    <section className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
-      <h2 className="text-lg font-semibold text-slate-800">Curva de temperatura interpolada</h2>
+    <section className="rounded-2xl bg-white p-5 shadow-sm ring-1 ring-slate-200/70">
+      <h2 className="font-serif text-xl font-semibold text-slate-800">Curva de temperatura interpolada</h2>
       <p className="mt-1 text-sm text-slate-500">
         Datos ND se representan como cortes en la curva para mantener la trazabilidad.
       </p>
